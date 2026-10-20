@@ -24,7 +24,13 @@ flowchart LR
 ## Results
 
 ![MASE](results/figures/fig_q1_matched_mase.png)
+*Forecast accuracy (MASE) vs statistical baselines.*
+
 ![Ablation](results/figures/fig_q2_ablation.png)
+*Contribution of each feature block.*
+
+![Portfolio](results/figures/fig_q5_cumulative.png)
+*Long-short portfolio, equal- vs value-weighted.*
 
 ## Layout
 
