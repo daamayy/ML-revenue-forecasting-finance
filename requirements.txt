@@ -1,0 +1,32 @@
+# Python dependencies
+
+# Core scientific stack
+numpy>=1.26
+pandas>=2.1
+pyarrow>=14.0          # parquet I/O for the modeling panel
+scipy>=1.11
+statsmodels>=0.14      # Newey-West / OLS for DM tests and factor regressions
+
+# Data access
+wrds>=3.2              # Compustat fundq, CRSP msf, CCM linking
+fredapi>=0.5           # FRED macro series
+
+# Statistical forecasting benchmarks (Tier 1)
+statsforecast>=1.7     # SeasonalNaive, AutoARIMA, AutoETS
+
+# Tree-based ML (Tier 3)
+mlforecast>=0.13       # rolling time-series feature/forecast utilities
+lightgbm>=4.1
+xgboost>=2.0
+scikit-learn>=1.4      # ElasticNet, RandomForest, scalers, permutation importance
+
+# Deep learning (Tier 4, GPU machine)
+neuralforecast>=1.7    # LSTM, TFT
+torch>=2.1
+
+# Interpretation
+shap>=0.44
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.66

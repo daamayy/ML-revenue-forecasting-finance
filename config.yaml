@@ -1,0 +1,122 @@
+# ===========================================================================
+# AS_FIN — central configuration
+# All paths, sample filters, rolling-window sizes, feature blocks and model
+# hyper-parameter grids live here so the research design (project design) and
+# the code stay in sync. Override any field via environment or CLI if needed.
+# ===========================================================================
+
+paths:
+  # Repository-relative roots. Resolved against the project root in config.py.
+  data_raw: "../Data/raw"            # WRDS / FRED downloads land here
+  data_ibes: "../Data/ibes"
+  data_interim: "../Data/interim"    # merged panel, before feature build
+  data_processed: "../Data/processed"  # modeling-ready parquet
+  outputs: "outputs"
+  predictions: "outputs/predictions"
+  tables: "outputs/tables"
+  figures: "outputs/figures"
+  models: "outputs/models"
+
+sample:
+  # ---- Cross-section filters (design 4.5) ----
+  start_date: "1972-01-01"           # conservative Compustat quarterly coverage cutoff
+  end_date: "2025-12-31"
+  min_history_quarters: 8            # need >=8 prior quarters for lags/trend/vol
+  require_positive_saleq: true       # log target needs SALEQ>0 and SALEQ_lag4>0
+  crsp_shrcd: [10, 11]               # ordinary common shares
+  crsp_exchcd: [1, 2, 3]             # NYSE / AMEX / NASDAQ
+  exclude_sic_ranges:                # drop financials and utilities
+    - [6000, 6999]
+    - [4900, 4999]
+  min_price: 1.0                     # abs(prc) > $1
+  require_crsp_match: true           # keep only firm-quarters with a valid CRSP match
+  winsor_lower: 0.01                 # 1st / 99th pct winsorization
+  winsor_upper: 0.99
+  availability_lag_days: 60          # quarter-end + 60d when rdq missing (10-Q, Q1-3)
+  availability_lag_days_q4: 90       # quarter-end + 90d for Q4 (annual 10-K deadline)
+
+target:
+  # Primary modeling target: seasonal (year-over-year) log revenue growth.
+  primary: "seasonal_log_growth"     # log(SALEQ_t) - log(SALEQ_{t-4})
+  horizons: [1, 2, 3, 4]             # quarters ahead (Direct strategy)
+
+cleaning:
+  # Source-level data-quality treatment (features/clean.py).
+  min_saleq: 0.1                     # drop firm-quarters with <$0.1mn revenue (stubs)
+  max_abs_log_growth: 3.0            # |seasonal log growth| cap (~20x YoY) for errors
+
+rolling:
+  # Rolling-window protocol (design 3.5). Units = quarters.
+  train_quarters: 40                 # 10 years
+  val_quarters: 12                   # 3 years
+  refit_every: 4                     # refit annually
+  first_test_year: 1989
+  baseline_refit_windows: 4          # AutoARIMA/ETS: re-select order every N windows (speed)
+
+ibes:
+  period: ["1986-04-01", "2014-03-31"]  # IBES subsample for Q1 (analyst) / Q5
+  measure: "SAL"                     # revenue forecasts
+  fiscalp: "QTR"
+
+# Macro series to pull from FRED (Set D). Mapped to friendly names in code.
+fred_series:
+  GDPC1: real_gdp
+  CPIAUCSL: cpi
+  UNRATE: unemployment
+  FEDFUNDS: fed_rate
+  GS10: treasury_10y
+  T10Y2Y: term_spread
+  UMCSENT: consumer_sent
+  INDPRO: ind_production
+  DCOILWTICO: oil_price
+  RSAFS: retail_sales
+  HOUST: housing_starts
+  DGORDER: durable_goods
+  DTWEXBGS: usd_index
+
+# Feature blocks for the ablation study (Q2). Column lists are populated by the
+# feature builders; here we only fix the cumulative ordering A -> B -> C -> D -> E.
+feature_blocks:
+  A: revenue_history
+  B: financials
+  C: market
+  D: industry_macro
+  E: analyst            # IBES subsample only
+
+models:
+  # Hyper-parameter grids (design 3.4). Forward-validation selection.
+  elastic_net:
+    alpha: [0.0001, 0.001, 0.01, 0.1, 1.0]
+    l1_ratio: [0.1, 0.5, 0.9]
+  lightgbm:
+    num_leaves: [31, 63, 127]
+    max_depth: [5, 7, 10]
+    learning_rate: [0.01, 0.05, 0.1]
+    n_estimators: [200, 500, 1000]
+  xgboost:
+    max_depth: [3, 5, 7]
+    learning_rate: [0.01, 0.05, 0.1]
+    n_estimators: [200, 500, 1000]
+  random_forest:
+    # "Option B": lean tune-once grid (4 combos) + row subsampling, sized so the
+    # full CPU backtest fits inside the GPU window when run in parallel with
+    # LSTM/TFT. Spans the meaningful range (shallow cap 20 vs unlimited None; leaf
+    # 20 vs 50); RF is famously tuning-insensitive so this ~= a finer grid.
+    # Selection = our forward-validation tune-once, NOT Cao & You's random 5-fold CV
+    # (which would leak future->past on a time-series target). See GPU_HANDOFF.md.
+    n_estimators: [300]
+    max_depth: [20, null]
+    min_samples_leaf: [20, 50]
+    max_samples: [0.7]                 # each tree trains on 70% of rows (faster, decorrelated)
+  lstm:
+    hidden_size: [32, 64]
+    num_layers: [1, 2]
+    dropout: [0.1, 0.2]
+    input_size: [4, 8]
+  tft:
+    hidden_size: [32, 64]
+    n_heads: [2, 4]
+    dropout: [0.1, 0.2, 0.3]
+    input_size: [4, 8]
+
+seed: 42

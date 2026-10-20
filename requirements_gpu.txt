@@ -1,0 +1,21 @@
+# GPU requirements (RandomForest on CPU + LSTM/TFT on GPU).
+#
+# IMPORTANT: install torch FIRST, with the CUDA build that matches your GPU, e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+# (pick the cuXXX tag from https://pytorch.org). Do NOT let the line below pull a
+# CPU-only torch — that is why torch is commented out here.
+#
+# torch==2.10.0           # install separately with the CUDA wheel (see above)
+
+pandas==2.2.3
+numpy==2.4.3
+scikit-learn==1.8.0       # RandomForest
+scipy==1.15.2
+statsmodels==0.14.6
+pyarrow==23.0.1           # parquet I/O
+pyyaml==6.0.3
+matplotlib==3.10.8
+lightgbm==4.6.0
+xgboost==3.3.0
+statsforecast==2.0.3      # imported by the package init
+neuralforecast==3.1.7     # LSTM / TFT (needs torch)
